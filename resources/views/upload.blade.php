@@ -6,18 +6,18 @@
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Shopify Product Import</title>
+    <title>VRHUNEC Import Console</title>
     <style>
         :root {
-            --bg: #eef2f7;
-            --surface: rgba(255, 255, 255, 0.92);
+            --bg: #dfe6ee;
+            --surface: rgba(255, 255, 255, 0.94);
             --surface-strong: #ffffff;
-            --border: rgba(16, 24, 40, 0.10);
-            --text: #111827;
+            --border: rgba(15, 23, 42, 0.10);
+            --text: #0f172a;
             --muted: #5b6472;
-            --muted-strong: #374151;
-            --accent: #184e77;
-            --accent-2: #2a6f97;
+            --muted-strong: #334155;
+            --accent: #143a57;
+            --accent-2: #245f86;
             --success: #1f7a50;
             --warning: #9a6700;
             --danger: #b42318;
@@ -37,9 +37,9 @@
         body {
             color: var(--text);
             background:
-                radial-gradient(circle at top left, rgba(24, 78, 119, 0.10), transparent 26%),
-                radial-gradient(circle at top right, rgba(42, 111, 151, 0.08), transparent 24%),
-                linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+                radial-gradient(circle at top left, rgba(20, 58, 87, 0.14), transparent 26%),
+                radial-gradient(circle at top right, rgba(36, 95, 134, 0.10), transparent 24%),
+                linear-gradient(180deg, #eef3f8 0%, var(--bg) 100%);
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             line-height: 1.5;
         }
@@ -59,7 +59,8 @@
             padding: 14px 18px;
             border: 1px solid var(--border);
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.72);
+            background: linear-gradient(135deg, #0f172a, #12263f);
+            color: #e2e8f0;
             box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
         }
@@ -67,39 +68,34 @@
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             min-width: 0;
         }
 
-        .brand-mark {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            display: grid;
-            place-items: center;
-            color: #fff;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            box-shadow: 0 10px 24px rgba(24, 78, 119, 0.25);
+        .brand-logo {
+            display: block;
+            width: auto;
+            height: 28px;
         }
 
         .brand-text strong {
-            display: block;
-            font-size: 15px;
-            line-height: 1.15;
+            display: none;
         }
 
         .brand-text span {
             display: block;
-            font-size: 12px;
-            color: var(--muted);
+            font-size: 14px;
+            font-weight: 700;
+            color: #f8fafc;
+            line-height: 1;
+            margin-top: 1px;
         }
 
         .sync {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            color: var(--muted-strong);
+            color: #e2e8f0;
             font-size: 13px;
             white-space: nowrap;
         }
@@ -110,6 +106,16 @@
             border-radius: 999px;
             background: var(--success);
             box-shadow: 0 0 0 5px rgba(31, 122, 80, 0.12);
+        }
+
+        .pill-link {
+            text-decoration: none;
+            color: var(--accent);
+            background: rgba(24, 78, 119, 0.08);
+            padding: 9px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
         }
 
         .hero {
@@ -555,23 +561,24 @@
     <main class="page">
         <header class="topbar">
             <div class="brand">
-                <div class="brand-mark">S</div>
+                <img class="brand-logo" src="/logo.svg" alt="VRHUNEC">
                 <div class="brand-text">
-                    <strong>Shopify Import Studio</strong>
-                    <span>Queue-driven bulk product import</span>
+                    <span>Import console</span>
                 </div>
             </div>
-            <div class="sync">
-                <span class="sync-dot"></span>
-                <span id="syncLabel">Syncing live data</span>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <div class="sync">
+                    <span class="sync-dot"></span>
+                    <span id="syncLabel">Syncing live data</span>
+                </div>
             </div>
         </header>
 
         <section class="hero">
             <div class="hero-grid">
                 <div>
-                    <div class="eyebrow">Product Import Console</div>
-                    <h1>Professional bulk imports with background processing and duplicate control.</h1>
+                    <div class="eyebrow">VRHUNEC</div>
+                    <h1>Products bulk import with background processing and control duplicate products.</h1>
                     <p class="hero-copy">
                         Upload Shopify-ready CSV files, process them in the queue, skip duplicates safely, and keep the entire import lifecycle visible in one place.
                     </p>
@@ -626,7 +633,7 @@
                 <form method="POST" action="/upload" enctype="multipart/form-data">
                     @csrf
                     <div class="upload-panel">
-                        <label class="field-label" for="file">Select CSV file</label>
+                        <label class="field-label" for="file" style="margin-top:14px;">Select CSV file</label>
                         <input class="file-input" id="file" type="file" name="file" accept=".csv,.txt" required>
 
                         <div class="actions">

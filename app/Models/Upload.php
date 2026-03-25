@@ -12,6 +12,7 @@ class Upload extends Model
     const STATUS_FAILED = 'failed';
 
     protected $fillable = [
+        'shopify_store_id',
         'file_name',
         'file_path',
         'status',
@@ -25,5 +26,10 @@ class Upload extends Model
     public function products()
     {
         return $this->hasMany(Product::class);
+    }
+
+    public function shopifyStore()
+    {
+        return $this->belongsTo(ShopifyStore::class);
     }
 }

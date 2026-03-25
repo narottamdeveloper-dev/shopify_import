@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Upload;
+use App\Models\ShopifyStore;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,8 @@ class ProcessCsvJob implements ShouldQueue
             return;
         }
 
+        $store = $this->resolveStore($upload);
+
         $upload->update([
             'status' => Upload::STATUS_PROCESSING,
             'total_rows' => 0,
@@ -39,6 +42,7 @@ class ProcessCsvJob implements ShouldQueue
             'successful_rows' => 0,
             'skipped_rows' => 0,
             'failed_rows' => 0,
+            'shopify_store_id' => $store?->id,
         ]);
 
         $disk = Storage::disk(config('filesystems.default'));
@@ -102,7 +106,7 @@ class ProcessCsvJob implements ShouldQueue
         ]);
 
         foreach ($chunks as $rows) {
-            ProcessCsvChunkJob::dispatch($upload->id, $headers, $rows);
+            ProcessCsvChunkJob::dispatch($upload->id, $store?->id, $headers, $rows);
         }
 
         $this->writeImportLog($upload->id, 'Import queued', [
@@ -128,6 +132,15 @@ class ProcessCsvJob implements ShouldQueue
         }
 
         return true;
+    }
+
+    protected function resolveStore(Upload $upload): ?ShopifyStore
+    {
+        if ($upload->shopify_store_id) {
+            return ShopifyStore::find($upload->shopify_store_id);
+        }
+
+        return ShopifyStore::where('is_default', true)->where('is_active', true)->first();
     }
 
     protected function writeImportLog(int $uploadId, string $message, array $context = []): void

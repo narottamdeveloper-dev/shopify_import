@@ -7,3 +7,6 @@ use App\Http\Controllers\UploadController;
 Route::get('/', [UploadController::class, 'index']);
 Route::get('/dashboard-data', [UploadController::class, 'dashboardData']);
 Route::post('/upload', [UploadController::class, 'store']);
+Route::get('/admin', function () {
+    abort(404);
+});

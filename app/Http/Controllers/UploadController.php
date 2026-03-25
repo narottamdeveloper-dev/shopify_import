@@ -6,12 +6,15 @@ use Illuminate\Http\Request;
 use App\Models\Upload;
 use App\Jobs\ProcessCsvJob;
 use App\Models\Product;
+use App\Models\ShopifyStore;
 
 class UploadController extends Controller
 {
     public function index()
     {
-        return response()->view('upload')->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        return response()->view('upload', [
+            'stores' => $this->stores(),
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache')
             ->header('Expires', 'Thu, 01 Jan 1970 00:00:00 GMT');
     }
@@ -28,13 +31,18 @@ class UploadController extends Controller
     {
         $request->validate([
             'file' => 'required|mimes:csv,txt|max:51200',
+            'shopify_store_id' => 'nullable|exists:shopify_stores,id',
         ]);
 
         $file = $request->file('file');
+        $store = $request->filled('shopify_store_id')
+            ? ShopifyStore::find($request->integer('shopify_store_id'))
+            : $this->defaultStore();
 
         $path = $file->store('uploads');
 
         $upload = Upload::create([
+            'shopify_store_id' => $store?->id,
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $path,
             'status' => Upload::STATUS_PENDING,
@@ -67,6 +75,12 @@ class UploadController extends Controller
                 'failed' => Upload::where('status', Upload::STATUS_FAILED)->count(),
                 'skipped' => Product::where('status', Product::STATUS_SKIPPED)->count(),
             ],
+            'stores' => $this->stores()->map(fn (ShopifyStore $store) => [
+                'id' => $store->id,
+                'name' => $store->name,
+                'store_url' => $store->store_url,
+                'is_default' => $store->is_default,
+            ])->values(),
             'recent_uploads' => $recentUploads->map(fn (Upload $upload) => $this->uploadPayload($upload))->values(),
             'failed_rows' => Product::query()
                 ->where('status', Product::STATUS_FAILED)
@@ -127,8 +141,69 @@ class UploadController extends Controller
             'type' => $failed > 0 ? 'warning' : 'success',
             'title' => $failed > 0 ? 'Import completed with some issues' : 'Import completed successfully',
             'message' => $skipped > 0
-                ? "{$successful} products imported and {$skipped} already-present products skipped."
-                : "{$successful} products imported successfully.",
+            ? "{$successful} products imported and {$skipped} already-present products skipped."
+            : "{$successful} products imported successfully.",
         ];
+    }
+
+    protected function stores()
+    {
+        $stores = ShopifyStore::query()->orderByDesc('is_default')->orderBy('name')->get();
+
+        if ($stores->isEmpty()) {
+            $seeded = $this->seedDefaultStore();
+
+            return $seeded
+                ? ShopifyStore::query()->orderByDesc('is_default')->orderBy('name')->get()
+                : $stores;
+        }
+
+        return $stores;
+    }
+
+    protected function defaultStore(): ?ShopifyStore
+    {
+        $store = ShopifyStore::where('is_default', true)->where('is_active', true)->first() ?: $this->seedDefaultStore();
+
+        if ($store) {
+            $this->backfillLegacyRecords($store);
+        }
+
+        return $store;
+    }
+
+    protected function seedDefaultStore(): ?ShopifyStore
+    {
+        $storeUrl = $this->normalizeStoreUrl((string) config('services.shopify.store_url'));
+        $token = (string) config('services.shopify.access_token');
+
+        if ($storeUrl === '' || $token === '') {
+            return null;
+        }
+
+        return tap(ShopifyStore::firstOrCreate(
+            ['store_url' => $storeUrl],
+            [
+                'name' => config('app.name', 'Shopify Importer') . ' Default',
+                'access_token' => $token,
+                'api_version' => config('services.shopify.api_version', '2024-01'),
+                'collection_id' => config('services.shopify.collection_id'),
+                'is_default' => true,
+                'is_active' => true,
+            ]
+        ), function (ShopifyStore $store) {
+            $this->backfillLegacyRecords($store);
+        });
+    }
+
+    protected function backfillLegacyRecords(ShopifyStore $store): void
+    {
+        Upload::whereNull('shopify_store_id')->update(['shopify_store_id' => $store->id]);
+        Product::whereNull('shopify_store_id')->update(['shopify_store_id' => $store->id]);
+    }
+
+    protected function normalizeStoreUrl(string $url): string
+    {
+        return preg_replace('#^https?://#', '', trim($url));
     }
 }

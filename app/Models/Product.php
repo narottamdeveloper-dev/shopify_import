@@ -14,6 +14,7 @@ class Product extends Model
 
     protected $fillable = [
         'upload_id',
+        'shopify_store_id',
         'title',
         'description',
         'price',
@@ -28,5 +29,10 @@ class Product extends Model
     public function upload()
     {
         return $this->belongsTo(Upload::class);
+    }
+
+    public function shopifyStore()
+    {
+        return $this->belongsTo(ShopifyStore::class);
     }
 }

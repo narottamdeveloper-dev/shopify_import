@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ImportLog;
 use App\Models\Product;
+use App\Models\ShopifyStore;
 use App\Models\Upload;
 use App\Services\ShopifyService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,13 +23,16 @@ class ProcessCsvChunkJob implements ShouldQueue
 
     protected $uploadId;
 
+    protected $shopifyStoreId;
+
     protected $headers;
 
     protected $rows;
 
-    public function __construct($uploadId, array $headers, array $rows)
+    public function __construct($uploadId, $shopifyStoreId, array $headers, array $rows)
     {
         $this->uploadId = $uploadId;
+        $this->shopifyStoreId = $shopifyStoreId;
         $this->headers = $headers;
         $this->rows = $rows;
     }
@@ -41,7 +45,8 @@ class ProcessCsvChunkJob implements ShouldQueue
             return;
         }
 
-        $shopify = new ShopifyService();
+        $store = $this->resolveStore($upload);
+        $shopify = new ShopifyService($store?->toShopifyConfig() ?? []);
 
         foreach ($this->rows as $rowIndex => $row) {
             try {
@@ -60,6 +65,7 @@ class ProcessCsvChunkJob implements ShouldQueue
                         'price' => is_numeric($price) ? $price : null,
                         'status' => Product::STATUS_FAILED,
                         'error_message' => 'Missing required title or price column in CSV row.',
+                        'shopify_store_id' => $store?->id,
                         'source_handle' => $sourceHandle,
                         'source_sku' => $sourceSku,
                         'source_key' => $sourceKey,
@@ -80,6 +86,7 @@ class ProcessCsvChunkJob implements ShouldQueue
                         'price' => null,
                         'status' => Product::STATUS_FAILED,
                         'error_message' => 'Invalid price value in CSV row.',
+                        'shopify_store_id' => $store?->id,
                         'source_handle' => $sourceHandle,
                         'source_sku' => $sourceSku,
                         'source_key' => $sourceKey,
@@ -101,6 +108,7 @@ class ProcessCsvChunkJob implements ShouldQueue
                         'price' => $price,
                         'status' => Product::STATUS_SKIPPED,
                         'error_message' => 'Product already present and skipped.',
+                        'shopify_store_id' => $store?->id,
                         'source_handle' => $sourceHandle,
                         'source_sku' => $sourceSku,
                         'source_key' => $sourceKey,
@@ -119,6 +127,7 @@ class ProcessCsvChunkJob implements ShouldQueue
                     'description' => $description,
                     'price' => (float) $price,
                     'status' => Product::STATUS_PENDING,
+                    'shopify_store_id' => $store?->id,
                     'source_handle' => $sourceHandle,
                     'source_sku' => $sourceSku,
                     'source_key' => $sourceKey,
@@ -164,6 +173,7 @@ class ProcessCsvChunkJob implements ShouldQueue
                     'price' => is_numeric($price ?? null) ? (float) $price : null,
                     'status' => Product::STATUS_FAILED,
                     'error_message' => $e->getMessage(),
+                    'shopify_store_id' => $store?->id,
                     'source_handle' => $sourceHandle ?? null,
                     'source_sku' => $sourceSku ?? null,
                     'source_key' => $sourceKey ?? null,
@@ -232,25 +242,30 @@ class ProcessCsvChunkJob implements ShouldQueue
     protected function productAlreadyExists(?string $title, $price, string $sourceHandle, string $sourceSku, string $sourceKey): bool
     {
         $statuses = [Product::STATUS_SUCCESS, Product::STATUS_SKIPPED];
+        $query = Product::query()->whereIn('status', $statuses);
 
-        if ($sourceHandle !== '' && Product::where('source_handle', $sourceHandle)->whereIn('status', $statuses)->exists()) {
+        if ($this->shopifyStoreId) {
+            $query->where('shopify_store_id', $this->shopifyStoreId);
+        }
+
+        if ($sourceHandle !== '' && (clone $query)->where('source_handle', $sourceHandle)->exists()) {
             return true;
         }
 
-        if ($sourceSku !== '' && Product::where('source_sku', $sourceSku)->whereIn('status', $statuses)->exists()) {
+        if ($sourceSku !== '' && (clone $query)->where('source_sku', $sourceSku)->exists()) {
             return true;
         }
 
-        if ($sourceKey !== '' && Product::where('source_key', $sourceKey)->whereIn('status', $statuses)->exists()) {
+        if ($sourceKey !== '' && (clone $query)->where('source_key', $sourceKey)->exists()) {
             return true;
         }
 
         $cleanTitle = $this->normalizeText($title);
 
         if ($cleanTitle !== '' && $price !== null && $price !== '') {
-            return Product::where('title', $cleanTitle)
+            return (clone $query)
+                ->where('title', $cleanTitle)
                 ->where('price', $price)
-                ->whereIn('status', $statuses)
                 ->exists();
         }
 
@@ -309,5 +324,18 @@ class ProcessCsvChunkJob implements ShouldQueue
             ]);
         } catch (Throwable) {
         }
+    }
+
+    protected function resolveStore(Upload $upload): ?ShopifyStore
+    {
+        if ($this->shopifyStoreId) {
+            return ShopifyStore::find($this->shopifyStoreId);
+        }
+
+        if ($upload->shopify_store_id) {
+            return ShopifyStore::find($upload->shopify_store_id);
+        }
+
+        return ShopifyStore::where('is_default', true)->where('is_active', true)->first();
     }
 }
