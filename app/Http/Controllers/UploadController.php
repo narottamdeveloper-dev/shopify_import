@@ -42,7 +42,9 @@ class UploadController extends Controller
 
         ProcessCsvJob::dispatch($upload->id);
 
-        return back()->with('success', 'File uploaded and processing started');
+        return back()
+            ->with('success', 'File uploaded and queued for background processing.')
+            ->with('tracked_upload_id', $upload->id);
     }
 
     protected function dashboardPayload(): array
@@ -62,10 +64,22 @@ class UploadController extends Controller
                     'id' => $upload->id,
                     'file_name' => $upload->file_name,
                     'status' => $upload->status,
+                    'status_label' => $this->statusLabel($upload->status),
                     'created_at' => optional($upload->created_at)->format('d M Y, h:i A'),
                 ])
                 ->values(),
             'generated_at' => now()->format('d M Y, h:i:s A'),
         ];
+    }
+
+    protected function statusLabel(string $status): string
+    {
+        return match ($status) {
+            Upload::STATUS_PENDING => 'Queued',
+            Upload::STATUS_PROCESSING => 'Processing',
+            Upload::STATUS_COMPLETED => 'Completed',
+            Upload::STATUS_FAILED => 'Failed',
+            default => ucfirst($status),
+        };
     }
 }

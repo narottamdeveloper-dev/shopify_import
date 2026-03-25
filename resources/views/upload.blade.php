@@ -173,6 +173,12 @@
             border: 1px solid rgba(176, 61, 46, 0.16);
         }
 
+        .notice-info {
+            color: #7c4a1d;
+            background: rgba(181, 93, 56, 0.08);
+            border: 1px solid rgba(181, 93, 56, 0.18);
+        }
+
         .upload-box {
             margin-top: 24px;
             padding: 24px;
@@ -323,6 +329,48 @@
             border-radius: 20px;
         }
 
+        .toast-stack {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 30;
+            display: grid;
+            gap: 12px;
+            width: min(360px, calc(100% - 32px));
+        }
+
+        .toast {
+            padding: 16px 18px;
+            border-radius: 18px;
+            color: #fffaf4;
+            box-shadow: 0 18px 40px rgba(58, 35, 18, 0.18);
+        }
+
+        .toast strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .toast span {
+            display: block;
+            font-size: 13px;
+            line-height: 1.5;
+            color: rgba(255, 250, 244, 0.82);
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, #1f7a50, #145338);
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, #b03d2e, #7a291e);
+        }
+
+        .toast-info {
+            background: linear-gradient(135deg, #8d4323, #60301a);
+        }
+
         @media (max-width: 920px) {
             .hero-grid,
             .grid {
@@ -397,6 +445,10 @@
                     <div class="notice notice-success">{{ session('success') }}</div>
                 @endif
 
+                <div class="notice notice-info" id="queueNotice">
+                    Imports are queued in the background. Keep the queue worker running and this page will update status automatically.
+                </div>
+
                 @if ($errors->any())
                     <div class="notice notice-error">
                         {{ $errors->first('file') ?? 'The upload could not be processed.' }}
@@ -448,7 +500,10 @@
         </section>
     </main>
 
+    <div class="toast-stack" id="toastStack"></div>
+
     <script>
+        const trackedUploadId = @json(session('tracked_upload_id'));
         const stats = {
             uploads: document.querySelector('[data-stat="uploads"]'),
             products: document.querySelector('[data-stat="products"]'),
@@ -457,6 +512,10 @@
         };
 
         const recentUploads = document.getElementById('recentUploads');
+        const queueNotice = document.getElementById('queueNotice');
+        const toastStack = document.getElementById('toastStack');
+        const seenNotifications = new Set(JSON.parse(localStorage.getItem('seen_upload_notifications') || '[]'));
+        let lastTrackedStatus = null;
 
         function formatNumber(value) {
             return new Intl.NumberFormat().format(value || 0);
@@ -474,9 +533,26 @@
                         <strong>${escapeHtml(upload.file_name)}</strong>
                         <span>#${upload.id} · ${escapeHtml(upload.created_at || '')}</span>
                     </div>
-                    <div class="status status-${escapeHtml(upload.status)}">${escapeHtml(upload.status)}</div>
+                    <div class="status status-${escapeHtml(upload.status)}">${escapeHtml(upload.status_label || upload.status)}</div>
                 </div>
             `).join('');
+        }
+
+        function renderQueueNotice(items) {
+            const processing = items.filter((upload) => upload.status === 'processing').length;
+            const pending = items.filter((upload) => upload.status === 'pending').length;
+
+            if (processing > 0) {
+                queueNotice.textContent = `Import worker is active. ${processing} upload${processing > 1 ? 's are' : ' is'} processing right now.`;
+                return;
+            }
+
+            if (pending > 0) {
+                queueNotice.textContent = `Import${pending > 1 ? 's are' : ' is'} queued and waiting for the background worker.`;
+                return;
+            }
+
+            queueNotice.textContent = 'Background import queue is idle. New uploads will be picked up automatically by the worker.';
         }
 
         function escapeHtml(value) {
@@ -486,6 +562,69 @@
                 .replaceAll('>', '&gt;')
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#039;');
+        }
+
+        function persistSeenNotifications() {
+            localStorage.setItem('seen_upload_notifications', JSON.stringify([...seenNotifications]));
+        }
+
+        function pushToast(type, title, message) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span>`;
+            toastStack.prepend(toast);
+
+            window.setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        function notifyUpload(upload) {
+            const key = `${upload.id}:${upload.status}`;
+
+            if (seenNotifications.has(key)) {
+                return;
+            }
+
+            seenNotifications.add(key);
+            persistSeenNotifications();
+
+            if (upload.status === 'completed') {
+                pushToast('success', 'Import completed', `${upload.file_name} finished successfully.`);
+            }
+
+            if (upload.status === 'failed') {
+                pushToast('error', 'Import failed', `${upload.file_name} finished with errors.`);
+            }
+
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const title = upload.status === 'completed' ? 'Import completed' : 'Import failed';
+                const body = upload.status === 'completed'
+                    ? `${upload.file_name} has finished processing.`
+                    : `${upload.file_name} could not be imported successfully.`;
+
+                new Notification(title, { body });
+            }
+        }
+
+        function trackUploadCompletion(items) {
+            if (!trackedUploadId) {
+                return;
+            }
+
+            const tracked = items.find((upload) => upload.id === trackedUploadId);
+
+            if (!tracked) {
+                return;
+            }
+
+            if (tracked.status !== lastTrackedStatus) {
+                lastTrackedStatus = tracked.status;
+            }
+
+            if (tracked.status === 'completed' || tracked.status === 'failed') {
+                notifyUpload(tracked);
+            }
         }
 
         async function loadDashboard() {
@@ -507,14 +646,22 @@
                     element.textContent = formatNumber(payload.stats?.[key]);
                 });
 
-                renderUploads(payload.recent_uploads || []);
+                const uploads = payload.recent_uploads || [];
+
+                renderUploads(uploads);
+                renderQueueNotice(uploads);
+                trackUploadCompletion(uploads);
             } catch (error) {
                 recentUploads.innerHTML = '<div class="empty">Could not load current uploads.</div>';
             }
         }
 
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().catch(() => {});
+        }
+
         loadDashboard();
-        setInterval(loadDashboard, 15000);
+        setInterval(loadDashboard, 5000);
     </script>
 </body>
 </html>
