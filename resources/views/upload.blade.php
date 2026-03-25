@@ -6,140 +6,195 @@
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Shopify CSV Importer</title>
+    <title>Shopify Product Import</title>
     <style>
         :root {
-            --bg: #f5efe3;
-            --panel: rgba(255, 252, 246, 0.92);
-            --panel-strong: #fffaf0;
-            --line: rgba(87, 64, 39, 0.14);
-            --text: #23180f;
-            --muted: #6b5a49;
-            --accent: #b55d38;
-            --accent-dark: #8d4323;
+            --bg: #eef2f7;
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-strong: #ffffff;
+            --border: rgba(16, 24, 40, 0.10);
+            --text: #111827;
+            --muted: #5b6472;
+            --muted-strong: #374151;
+            --accent: #184e77;
+            --accent-2: #2a6f97;
             --success: #1f7a50;
-            --warning: #a66a16;
-            --danger: #b03d2e;
-            --shadow: 0 24px 60px rgba(58, 35, 18, 0.12);
+            --warning: #9a6700;
+            --danger: #b42318;
+            --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+            --radius: 20px;
         }
 
         * {
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
             margin: 0;
-            min-height: 100vh;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top left, rgba(232, 169, 104, 0.35), transparent 30%),
-                radial-gradient(circle at right, rgba(132, 179, 150, 0.22), transparent 28%),
-                linear-gradient(135deg, #f9f3e8 0%, #f2e5cd 52%, #eadfc9 100%);
+            min-height: 100%;
         }
 
-        .shell {
-            width: min(1140px, calc(100% - 32px));
-            margin: 32px auto;
+        body {
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(24, 78, 119, 0.10), transparent 26%),
+                radial-gradient(circle at top right, rgba(42, 111, 151, 0.08), transparent 24%),
+                linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.5;
+        }
+
+        .page {
+            width: min(1240px, calc(100% - 32px));
+            margin: 20px auto 32px;
             display: grid;
-            gap: 24px;
+            gap: 18px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 10px 24px rgba(24, 78, 119, 0.25);
+        }
+
+        .brand-text strong {
+            display: block;
+            font-size: 15px;
+            line-height: 1.15;
+        }
+
+        .brand-text span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .sync {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted-strong);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--success);
+            box-shadow: 0 0 0 5px rgba(31, 122, 80, 0.12);
         }
 
         .hero {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, rgba(45, 31, 20, 0.95), rgba(93, 50, 24, 0.92));
-            color: #fff7ef;
+            padding: 28px;
+            border: 1px solid var(--border);
             border-radius: 28px;
-            padding: 32px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 248, 252, 0.94));
             box-shadow: var(--shadow);
         }
 
-        .hero::after {
-            content: "";
-            position: absolute;
-            inset: auto -10% -35% auto;
-            width: 280px;
-            height: 280px;
-            border-radius: 50%;
-            background: rgba(255, 206, 160, 0.15);
+        .hero-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+            gap: 20px;
+            align-items: start;
         }
 
         .eyebrow {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 12px;
+            padding: 7px 12px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.12);
             font-size: 12px;
-            letter-spacing: 0.08em;
+            font-weight: 700;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
+            color: var(--accent);
+            background: rgba(24, 78, 119, 0.08);
         }
 
-        .hero h1 {
-            margin: 18px 0 10px;
-            max-width: 620px;
-            font-size: clamp(32px, 5vw, 56px);
-            line-height: 0.95;
+        h1 {
+            margin: 14px 0 8px;
+            font-size: clamp(30px, 4vw, 48px);
+            line-height: 1.05;
+            letter-spacing: -0.03em;
         }
 
-        .hero p {
-            max-width: 620px;
+        .hero-copy {
+            max-width: 680px;
             margin: 0;
-            color: rgba(255, 247, 239, 0.8);
-            font-size: 16px;
-            line-height: 1.6;
-        }
-
-        .hero-grid,
-        .stats,
-        .uploads {
-            display: grid;
-            gap: 18px;
-        }
-
-        .hero-grid {
-            grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
-            align-items: end;
-            gap: 24px;
+            color: var(--muted);
+            font-size: 15px;
         }
 
         .stats {
+            display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
         }
 
         .stat {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
             padding: 18px;
-            backdrop-filter: blur(8px);
-        }
-
-        .stat strong {
-            display: block;
-            margin-top: 8px;
-            font-size: 30px;
-            line-height: 1;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface-strong);
         }
 
         .stat span {
-            color: rgba(255, 247, 239, 0.74);
-            font-size: 13px;
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 700;
         }
 
-        .grid {
+        .stat strong {
+            font-size: 28px;
+            line-height: 1;
+            letter-spacing: -0.03em;
+        }
+
+        .content {
             display: grid;
-            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-            gap: 24px;
+            grid-template-columns: minmax(0, 0.94fr) minmax(360px, 1.06fr);
+            gap: 18px;
         }
 
         .card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            padding: 26px;
+            padding: 22px;
+            border-radius: 26px;
+            border: 1px solid var(--border);
+            background: var(--surface);
             box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
         }
@@ -147,59 +202,76 @@
         .card h2,
         .card h3 {
             margin: 0;
+            letter-spacing: -0.02em;
         }
 
         .card p {
+            margin: 10px 0 0;
             color: var(--muted);
-            line-height: 1.6;
+            font-size: 14px;
         }
 
         .notice {
-            margin-bottom: 18px;
+            margin-top: 16px;
             padding: 14px 16px;
             border-radius: 16px;
+            border: 1px solid var(--border);
             font-size: 14px;
+        }
+
+        .notice strong {
+            display: block;
+            margin-bottom: 4px;
         }
 
         .notice-success {
             color: var(--success);
-            background: rgba(31, 122, 80, 0.09);
-            border: 1px solid rgba(31, 122, 80, 0.16);
+            background: rgba(31, 122, 80, 0.08);
+            border-color: rgba(31, 122, 80, 0.16);
+        }
+
+        .notice-warning {
+            color: var(--warning);
+            background: rgba(154, 103, 0, 0.08);
+            border-color: rgba(154, 103, 0, 0.16);
         }
 
         .notice-error {
             color: var(--danger);
-            background: rgba(176, 61, 46, 0.08);
-            border: 1px solid rgba(176, 61, 46, 0.16);
+            background: rgba(180, 35, 24, 0.08);
+            border-color: rgba(180, 35, 24, 0.16);
         }
 
         .notice-info {
-            color: #7c4a1d;
-            background: rgba(181, 93, 56, 0.08);
-            border: 1px solid rgba(181, 93, 56, 0.18);
+            color: var(--accent);
+            background: rgba(24, 78, 119, 0.08);
+            border-color: rgba(24, 78, 119, 0.14);
         }
 
-        .upload-box {
-            margin-top: 24px;
-            padding: 24px;
-            border: 1.5px dashed rgba(181, 93, 56, 0.28);
-            background: var(--panel-strong);
+        .upload-panel {
+            margin-top: 16px;
+            padding: 18px;
             border-radius: 22px;
+            border: 1px solid rgba(24, 78, 119, 0.12);
+            background: linear-gradient(180deg, #fff, #f9fbfe);
         }
 
         .field-label {
             display: block;
-            margin-bottom: 12px;
-            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted-strong);
         }
 
         .file-input {
             width: 100%;
-            padding: 18px;
-            border: 1px solid rgba(87, 64, 39, 0.18);
-            border-radius: 16px;
+            padding: 15px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
             background: #fff;
-            color: var(--text);
+            font-size: 14px;
+            color: var(--muted-strong);
         }
 
         .actions {
@@ -207,51 +279,46 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-top: 18px;
+            margin-top: 14px;
             flex-wrap: wrap;
         }
 
-        .hint {
-            font-size: 13px;
+        .helper {
             color: var(--muted);
+            font-size: 13px;
         }
 
         .button {
             appearance: none;
             border: 0;
             border-radius: 999px;
-            padding: 14px 24px;
-            font-size: 15px;
+            padding: 13px 18px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            font-size: 14px;
             font-weight: 700;
-            letter-spacing: 0.02em;
-            color: #fffaf4;
-            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
             cursor: pointer;
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
-            box-shadow: 0 18px 30px rgba(181, 93, 56, 0.24);
+            box-shadow: 0 12px 24px rgba(24, 78, 119, 0.18);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .button:hover {
             transform: translateY(-1px);
+            box-shadow: 0 16px 28px rgba(24, 78, 119, 0.22);
         }
 
-        .stack {
-            display: grid;
-            gap: 18px;
-        }
-
-        .mini-grid {
+        .subgrid {
+            margin-top: 16px;
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 14px;
-            margin-top: 20px;
         }
 
         .mini-card {
             padding: 16px;
             border-radius: 18px;
+            border: 1px solid var(--border);
             background: #fff;
-            border: 1px solid var(--line);
         }
 
         .mini-card strong {
@@ -265,85 +332,156 @@
             font-size: 13px;
         }
 
-        .uploads {
-            margin-top: 20px;
+        .sidebar-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
         }
 
-        .upload-row {
+        .list {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stack-section {
+            display: grid;
             gap: 16px;
-            align-items: center;
-            padding: 16px 18px;
+        }
+
+        .row {
+            padding: 16px;
             border-radius: 18px;
+            border: 1px solid var(--border);
             background: #fff;
-            border: 1px solid var(--line);
         }
 
-        .upload-row strong {
-            display: block;
-            margin-bottom: 4px;
-            font-size: 15px;
+        .row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
         }
 
-        .upload-row span {
+        .row-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .row-meta {
+            margin-top: 4px;
             color: var(--muted);
-            font-size: 13px;
+            font-size: 12px;
+        }
+
+        .row-submeta {
+            display: block;
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .progress {
+            height: 8px;
+            margin-top: 12px;
+            border-radius: 999px;
+            background: #edf2f7;
+            overflow: hidden;
+        }
+
+        .progress > div {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
         }
 
         .status {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 96px;
-            padding: 9px 12px;
+            min-width: 92px;
+            padding: 8px 10px;
             border-radius: 999px;
-            text-transform: capitalize;
             font-size: 12px;
             font-weight: 700;
-            letter-spacing: 0.04em;
+            text-transform: capitalize;
+            white-space: nowrap;
         }
 
         .status-pending,
         .status-processing {
             color: var(--warning);
-            background: rgba(166, 106, 22, 0.1);
+            background: rgba(154, 103, 0, 0.10);
         }
 
         .status-completed {
             color: var(--success);
-            background: rgba(31, 122, 80, 0.1);
+            background: rgba(31, 122, 80, 0.10);
         }
 
         .status-failed {
             color: var(--danger);
-            background: rgba(176, 61, 46, 0.1);
+            background: rgba(180, 35, 24, 0.10);
+        }
+
+        .status-skipped {
+            color: var(--accent);
+            background: rgba(24, 78, 119, 0.10);
+        }
+
+        .error-item {
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(180, 35, 24, 0.14);
+            background: rgba(180, 35, 24, 0.04);
+        }
+
+        .error-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .error-meta {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .error-message {
+            display: block;
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--danger);
         }
 
         .empty {
-            padding: 24px;
+            padding: 22px;
             text-align: center;
             color: var(--muted);
+            border-radius: 18px;
+            border: 1px dashed var(--border);
             background: #fff;
-            border: 1px dashed var(--line);
-            border-radius: 20px;
         }
 
         .toast-stack {
             position: fixed;
-            right: 24px;
-            bottom: 24px;
+            right: 20px;
+            bottom: 20px;
             z-index: 30;
             display: grid;
-            gap: 12px;
+            gap: 10px;
             width: min(360px, calc(100% - 32px));
         }
 
         .toast {
-            padding: 16px 18px;
-            border-radius: 18px;
-            color: #fffaf4;
-            box-shadow: 0 18px 40px rgba(58, 35, 18, 0.18);
+            padding: 14px 16px;
+            border-radius: 16px;
+            color: #fff;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
         }
 
         .toast strong {
@@ -353,10 +491,8 @@
         }
 
         .toast span {
-            display: block;
             font-size: 13px;
-            line-height: 1.5;
-            color: rgba(255, 250, 244, 0.82);
+            color: rgba(255, 255, 255, 0.84);
         }
 
         .toast-success {
@@ -364,55 +500,81 @@
         }
 
         .toast-error {
-            background: linear-gradient(135deg, #b03d2e, #7a291e);
+            background: linear-gradient(135deg, #b42318, #7f1d1d);
         }
 
         .toast-info {
-            background: linear-gradient(135deg, #8d4323, #60301a);
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
         }
 
-        @media (max-width: 920px) {
+        @media (max-width: 980px) {
             .hero-grid,
-            .grid {
+            .content {
                 grid-template-columns: 1fr;
             }
         }
 
-        @media (max-width: 640px) {
-            .shell {
+        @media (max-width: 720px) {
+            .page {
                 width: min(100% - 20px, 100%);
-                margin: 18px auto 28px;
+                margin-top: 12px;
             }
 
+            .topbar,
             .hero,
             .card {
-                padding: 22px;
-                border-radius: 22px;
+                border-radius: 20px;
+            }
+
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
             }
 
             .stats,
-            .mini-grid {
+            .subgrid {
                 grid-template-columns: 1fr;
             }
 
-            .upload-row {
-                grid-template-columns: 1fr;
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
             }
 
-            .status {
-                justify-self: start;
+            .button {
+                width: 100%;
+            }
+
+            .row-top {
+                flex-direction: column;
             }
         }
     </style>
 </head>
 <body>
-    <main class="shell">
+    <main class="page">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">S</div>
+                <div class="brand-text">
+                    <strong>Shopify Import Studio</strong>
+                    <span>Queue-driven bulk product import</span>
+                </div>
+            </div>
+            <div class="sync">
+                <span class="sync-dot"></span>
+                <span id="syncLabel">Syncing live data</span>
+            </div>
+        </header>
+
         <section class="hero">
             <div class="hero-grid">
                 <div>
-                    <div class="eyebrow">Shopify Import Console</div>
-                    <h1>Bulk product imports with queue-backed processing.</h1>
-                    <p>Upload Shopify-ready CSV files, push them through the queue, and keep the import trail visible from the application database.</p>
+                    <div class="eyebrow">Product Import Console</div>
+                    <h1>Professional bulk imports with background processing and duplicate control.</h1>
+                    <p class="hero-copy">
+                        Upload Shopify-ready CSV files, process them in the queue, skip duplicates safely, and keep the entire import lifecycle visible in one place.
+                    </p>
                 </div>
 
                 <div class="stats">
@@ -429,72 +591,98 @@
                         <strong data-stat="completed">0</strong>
                     </div>
                     <div class="stat">
-                        <span>Failed jobs</span>
-                        <strong data-stat="failed">0</strong>
+                        <span>Skipped duplicates</span>
+                        <strong data-stat="skipped">0</strong>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="grid">
+        <section class="content">
             <div class="card">
                 <h2>Upload CSV</h2>
-                <p>Use a Shopify-style CSV with product titles, descriptions, and variant pricing. Large files are queued for background processing after upload.</p>
+                <p>Use a Shopify export or a comparable CSV with product title, description, pricing, handle, and SKU.</p>
 
                 @if (session('success'))
-                    <div class="notice notice-success">{{ session('success') }}</div>
+                    <div class="notice notice-success">
+                        <strong>Upload accepted</strong>
+                        <div>{{ session('success') }}</div>
+                    </div>
                 @endif
 
                 <div class="notice notice-info" id="queueNotice">
-                    Imports are queued in the background. Keep the queue worker running and this page will update status automatically.
+                    Imports are queued in the background. Keep the worker running and this page will update automatically.
                 </div>
+
+                <div id="latestNoticeWrap"></div>
 
                 @if ($errors->any())
                     <div class="notice notice-error">
-                        {{ $errors->first('file') ?? 'The upload could not be processed.' }}
+                        <strong>Upload error</strong>
+                        <div>{{ $errors->first('file') ?? 'The upload could not be processed.' }}</div>
                     </div>
                 @endif
 
                 <form method="POST" action="/upload" enctype="multipart/form-data">
                     @csrf
-
-                    <div class="upload-box">
+                    <div class="upload-panel">
                         <label class="field-label" for="file">Select CSV file</label>
                         <input class="file-input" id="file" type="file" name="file" accept=".csv,.txt" required>
 
                         <div class="actions">
-                            <div class="hint">Accepted: `.csv`, `.txt` up to 50 MB</div>
+                            <div class="helper">Accepted file types: `.csv`, `.txt` up to 50 MB.</div>
                             <button class="button" type="submit">Start Import</button>
                         </div>
                     </div>
                 </form>
 
-                <div class="mini-grid">
+                <div class="subgrid">
                     <div class="mini-card">
-                        <strong>Queue-safe flow</strong>
-                        <span>Uploads are stored first and processed asynchronously to avoid blocking the request.</span>
+                        <strong>Queue safe</strong>
+                        <span>Jobs run in the background so large imports do not block the request cycle.</span>
                     </div>
                     <div class="mini-card">
-                        <strong>Large file ready</strong>
-                        <span>The importer reads CSV rows as a stream instead of loading the whole file into memory.</span>
+                        <strong>Chunked processing</strong>
+                        <span>Rows are dispatched in smaller jobs to keep imports responsive at scale.</span>
                     </div>
                     <div class="mini-card">
-                        <strong>Shopify mapping</strong>
-                        <span>The parser supports Shopify-style headers such as `Title`, `Body HTML`, and `Variant Price`.</span>
+                        <strong>Duplicate control</strong>
+                        <span>Records already present are skipped and surfaced clearly in the UI.</span>
                     </div>
                     <div class="mini-card">
-                        <strong>Import visibility</strong>
-                        <span>Upload, product, and import log tables keep the run traceable after submission.</span>
+                        <strong>Live visibility</strong>
+                        <span>Progress, status, and completion notices update automatically as the job runs.</span>
                     </div>
                 </div>
             </div>
 
             <aside class="card">
-                <h3>Recent Uploads</h3>
-                <p>Latest import attempts and their current job status.</p>
+                <div class="stack-section">
+                    <section>
+                        <div class="sidebar-head">
+                            <div>
+                                <h3>Recent Imports</h3>
+                                <p>Latest jobs and their live status.</p>
+                            </div>
+                        </div>
 
-                <div class="uploads" id="recentUploads">
-                    <div class="empty">Loading current uploads...</div>
+                        <div class="list" id="recentUploads">
+                            <div class="empty">Loading current imports...</div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="sidebar-head">
+                            <div>
+                                <h3>Failed Rows</h3>
+                                <p>Latest validation issues from the importer.</p>
+                            </div>
+                        </div>
+
+                        <div class="list" id="failedRows">
+                            <div class="empty">Loading failed rows...</div>
+                        </div>
+                    </section>
                 </div>
             </aside>
         </section>
@@ -508,51 +696,19 @@
             uploads: document.querySelector('[data-stat="uploads"]'),
             products: document.querySelector('[data-stat="products"]'),
             completed: document.querySelector('[data-stat="completed"]'),
-            failed: document.querySelector('[data-stat="failed"]'),
+            skipped: document.querySelector('[data-stat="skipped"]'),
         };
 
+        const syncLabel = document.getElementById('syncLabel');
         const recentUploads = document.getElementById('recentUploads');
+        const failedRows = document.getElementById('failedRows');
         const queueNotice = document.getElementById('queueNotice');
+        const latestNoticeWrap = document.getElementById('latestNoticeWrap');
         const toastStack = document.getElementById('toastStack');
         const seenNotifications = new Set(JSON.parse(localStorage.getItem('seen_upload_notifications') || '[]'));
-        let lastTrackedStatus = null;
 
         function formatNumber(value) {
             return new Intl.NumberFormat().format(value || 0);
-        }
-
-        function renderUploads(items) {
-            if (!items.length) {
-                recentUploads.innerHTML = '<div class="empty">No uploads yet.</div>';
-                return;
-            }
-
-            recentUploads.innerHTML = items.map((upload) => `
-                <div class="upload-row">
-                    <div>
-                        <strong>${escapeHtml(upload.file_name)}</strong>
-                        <span>#${upload.id} · ${escapeHtml(upload.created_at || '')}</span>
-                    </div>
-                    <div class="status status-${escapeHtml(upload.status)}">${escapeHtml(upload.status_label || upload.status)}</div>
-                </div>
-            `).join('');
-        }
-
-        function renderQueueNotice(items) {
-            const processing = items.filter((upload) => upload.status === 'processing').length;
-            const pending = items.filter((upload) => upload.status === 'pending').length;
-
-            if (processing > 0) {
-                queueNotice.textContent = `Import worker is active. ${processing} upload${processing > 1 ? 's are' : ' is'} processing right now.`;
-                return;
-            }
-
-            if (pending > 0) {
-                queueNotice.textContent = `Import${pending > 1 ? 's are' : ' is'} queued and waiting for the background worker.`;
-                return;
-            }
-
-            queueNotice.textContent = 'Background import queue is idle. New uploads will be picked up automatically by the worker.';
         }
 
         function escapeHtml(value) {
@@ -562,6 +718,81 @@
                 .replaceAll('>', '&gt;')
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#039;');
+        }
+
+        function renderUploads(items) {
+            if (!items.length) {
+                recentUploads.innerHTML = '<div class="empty">No imports yet.</div>';
+                return;
+            }
+
+            recentUploads.innerHTML = items.map((upload) => `
+                <div class="row">
+                    <div class="row-top">
+                        <div>
+                            <p class="row-title">${escapeHtml(upload.file_name)}</p>
+                            <div class="row-meta">#${upload.id} · ${escapeHtml(upload.created_at || '')}</div>
+                        </div>
+                        <div class="status status-${escapeHtml(upload.status)}">${escapeHtml(upload.status_label || upload.status)}</div>
+                    </div>
+                    <div class="row-submeta">
+                        ${upload.processed_rows || 0}/${upload.total_rows || 0} processed · ${upload.successful_rows || 0} imported · ${upload.skipped_rows || 0} skipped · ${upload.failed_rows || 0} failed
+                    </div>
+                    <div class="progress">
+                        <div style="width:${upload.progress || 0}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLatestNotice(notice) {
+            if (!notice) {
+                latestNoticeWrap.innerHTML = '';
+                return;
+            }
+
+            const className = notice.type === 'warning' ? 'notice notice-warning' : 'notice notice-success';
+            latestNoticeWrap.innerHTML = `
+                <div class="${className}">
+                    <strong>${escapeHtml(notice.title)}</strong>
+                    <div>${escapeHtml(notice.message)}</div>
+                </div>
+            `;
+        }
+
+        function renderFailedRows(items) {
+            if (!items.length) {
+                failedRows.innerHTML = '<div class="empty">No failed rows.</div>';
+                return;
+            }
+
+            failedRows.innerHTML = items.map((item) => `
+                <div class="error-item">
+                    <p class="error-title">${escapeHtml(item.title)}</p>
+                    <span class="error-meta">Upload #${item.upload_id} · ${escapeHtml(item.created_at || '')}</span>
+                    <span class="error-message">${escapeHtml(item.error_message)}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderQueueNotice(items) {
+            const processing = items.filter((upload) => upload.status === 'processing').length;
+            const pending = items.filter((upload) => upload.status === 'pending').length;
+
+            if (processing > 0) {
+                queueNotice.className = 'notice notice-info';
+                queueNotice.textContent = `${processing} import${processing > 1 ? 's are' : ' is'} processing in the background.`;
+                return;
+            }
+
+            if (pending > 0) {
+                queueNotice.className = 'notice notice-info';
+                queueNotice.textContent = `${pending} import${pending > 1 ? 's are' : ' is'} waiting in the queue.`;
+                return;
+            }
+
+            queueNotice.className = 'notice notice-info';
+            queueNotice.textContent = 'Background import queue is idle. New uploads will be picked up automatically.';
         }
 
         function persistSeenNotifications() {
@@ -590,7 +821,11 @@
             persistSeenNotifications();
 
             if (upload.status === 'completed') {
-                pushToast('success', 'Import completed', `${upload.file_name} finished successfully.`);
+                const duplicateText = upload.skipped_rows > 0
+                    ? ` ${upload.skipped_rows} duplicate${upload.skipped_rows > 1 ? 's were' : ' was'} skipped.`
+                    : '';
+
+                pushToast('success', 'Import completed', `${upload.file_name} finished successfully.${duplicateText}`);
             }
 
             if (upload.status === 'failed') {
@@ -600,7 +835,7 @@
             if ('Notification' in window && Notification.permission === 'granted') {
                 const title = upload.status === 'completed' ? 'Import completed' : 'Import failed';
                 const body = upload.status === 'completed'
-                    ? `${upload.file_name} has finished processing.`
+                    ? `${upload.file_name} has finished processing.${upload.skipped_rows > 0 ? ` ${upload.skipped_rows} duplicates were skipped.` : ''}`
                     : `${upload.file_name} could not be imported successfully.`;
 
                 new Notification(title, { body });
@@ -616,10 +851,6 @@
 
             if (!tracked) {
                 return;
-            }
-
-            if (tracked.status !== lastTrackedStatus) {
-                lastTrackedStatus = tracked.status;
             }
 
             if (tracked.status === 'completed' || tracked.status === 'failed') {
@@ -646,13 +877,18 @@
                     element.textContent = formatNumber(payload.stats?.[key]);
                 });
 
-                const uploads = payload.recent_uploads || [];
+                const items = payload.recent_uploads || [];
 
-                renderUploads(uploads);
-                renderQueueNotice(uploads);
-                trackUploadCompletion(uploads);
+                renderUploads(items);
+                renderFailedRows(payload.failed_rows || []);
+                renderQueueNotice(items);
+                renderLatestNotice(payload.latest_notice);
+                trackUploadCompletion(items);
+                syncLabel.textContent = `Last synced ${payload.generated_at}`;
             } catch (error) {
-                recentUploads.innerHTML = '<div class="empty">Could not load current uploads.</div>';
+                recentUploads.innerHTML = '<div class="empty">Could not load current imports.</div>';
+                queueNotice.className = 'notice notice-error';
+                queueNotice.textContent = 'Live dashboard data is temporarily unavailable.';
             }
         }
 

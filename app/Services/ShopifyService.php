@@ -31,13 +31,15 @@ class ShopifyService
         $response = Http::withHeaders([
             'X-Shopify-Access-Token' => $this->token,
             'Content-Type' => 'application/json',
-        ])->timeout(30)->post($url, [
+        ])->retry(3, 250)->timeout(30)->post($url, [
             'product' => [
                 'title' => $data['title'],
                 'body_html' => $data['description'],
+                'handle' => $data['handle'] ?? null,
                 'variants' => [
                     [
-                        'price' => $data['price']
+                        'price' => $data['price'],
+                        'sku' => $data['sku'] ?? null,
                     ]
                 ]
             ]
@@ -70,7 +72,7 @@ public function addToCollection($productId)
     $response = Http::withHeaders([
         'X-Shopify-Access-Token' => $this->token,
         'Content-Type' => 'application/json',
-    ])->timeout(30)->post($url, [
+    ])->retry(3, 250)->timeout(30)->post($url, [
         'collect' => [
             'product_id' => $productId,
             'collection_id' => $collectionId
