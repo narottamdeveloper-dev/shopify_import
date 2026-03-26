@@ -80,4 +80,4 @@ php artisan queue:work
 
 ## Import File for testing
 
-Use product_csv_to_impory.csv file present in root that contain 156 products
+Use product_csv_to_impory.csv file present in root that contain 156 products 
