@@ -78,3 +78,6 @@ php artisan queue:work
 - Duplicate skipping is based on Shopify collection membership, not on local database rows.
 - If Shopify rejects a custom handle as already in use, the importer retries without the handle and lets Shopify generate one automatically.
 
+## Import File for testing
+
+Use product_csv_to_impory.csv file present in root that contain 156 products
