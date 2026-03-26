@@ -47,6 +47,7 @@ class ProcessCsvChunkJob implements ShouldQueue
 
         $store = $this->resolveStore($upload);
         $shopify = new ShopifyService($store?->toShopifyConfig() ?? []);
+        $collectionIndex = $this->loadCollectionIndex($shopify);
 
         foreach ($this->rows as $rowIndex => $row) {
             try {
@@ -101,13 +102,13 @@ class ProcessCsvChunkJob implements ShouldQueue
                     continue;
                 }
 
-                if ($this->productAlreadyExists($title, $price, $sourceHandle, $sourceSku, $sourceKey)) {
+                if ($this->productAlreadyExistsInCollection($collectionIndex, $sourceHandle, $sourceSku)) {
                     $this->createProductRecord($upload->id, [
                         'title' => $title,
                         'description' => $description,
                         'price' => $price,
                         'status' => Product::STATUS_SKIPPED,
-                        'error_message' => 'Product already present and skipped.',
+                        'error_message' => 'Product already present in the Shopify collection and skipped.',
                         'shopify_store_id' => $store?->id,
                         'source_handle' => $sourceHandle,
                         'source_sku' => $sourceSku,
@@ -158,6 +159,22 @@ class ProcessCsvChunkJob implements ShouldQueue
                     $this->writeImportLog($upload->id, 'Collection add failed', [
                         'product_id' => $result['product_id'],
                     ]);
+                } else {
+                    $createdCollectionProduct = [
+                        'id' => $result['product_id'],
+                        'title' => $title,
+                        'handle' => $sourceHandle,
+                        'variants' => [
+                            'nodes' => [
+                                [
+                                    'sku' => $sourceSku,
+                                    'price' => (string) $price,
+                                ],
+                            ],
+                        ],
+                    ];
+
+                    $this->indexCollectionProduct($collectionIndex, $createdCollectionProduct);
                 }
 
                 $product->update([
@@ -239,37 +256,65 @@ class ProcessCsvChunkJob implements ShouldQueue
         return 'title:' . Str::lower(Str::slug($this->normalizeText($title))) . '|price:' . $this->normalizePrice($price);
     }
 
-    protected function productAlreadyExists(?string $title, $price, string $sourceHandle, string $sourceSku, string $sourceKey): bool
+    protected function productAlreadyExistsInCollection(array $collectionIndex, string $sourceHandle, string $sourceSku): bool
     {
-        $statuses = [Product::STATUS_SUCCESS, Product::STATUS_SKIPPED];
-        $query = Product::query()->whereIn('status', $statuses);
+        $cleanHandle = $this->normalizeText($sourceHandle);
+        $cleanSku = $this->normalizeText($sourceSku);
 
-        if ($this->shopifyStoreId) {
-            $query->where('shopify_store_id', $this->shopifyStoreId);
-        }
-
-        if ($sourceHandle !== '' && (clone $query)->where('source_handle', $sourceHandle)->exists()) {
+        if ($cleanHandle !== '' && isset($collectionIndex['handles'][$cleanHandle])) {
             return true;
         }
 
-        if ($sourceSku !== '' && (clone $query)->where('source_sku', $sourceSku)->exists()) {
+        if ($cleanSku !== '' && isset($collectionIndex['skus'][Str::lower($cleanSku)])) {
             return true;
-        }
-
-        if ($sourceKey !== '' && (clone $query)->where('source_key', $sourceKey)->exists()) {
-            return true;
-        }
-
-        $cleanTitle = $this->normalizeText($title);
-
-        if ($cleanTitle !== '' && $price !== null && $price !== '') {
-            return (clone $query)
-                ->where('title', $cleanTitle)
-                ->where('price', $price)
-                ->exists();
         }
 
         return false;
+    }
+
+    protected function loadCollectionIndex(ShopifyService $shopify): array
+    {
+        $result = $shopify->getCollectionProducts();
+
+        if (!$result['success']) {
+            $this->writeImportLog($this->uploadId, 'Collection lookup failed', [
+                'error' => $result['error'] ?? 'Unable to load collection products.',
+            ]);
+
+            return [
+                'handles' => [],
+                'skus' => [],
+            ];
+        }
+
+        $index = [
+            'handles' => [],
+            'skus' => [],
+        ];
+
+        foreach ($result['products'] ?? [] as $product) {
+            $this->indexCollectionProduct($index, $product);
+        }
+
+        return $index;
+    }
+
+    protected function indexCollectionProduct(array &$collectionIndex, array $product): void
+    {
+        $handle = $this->normalizeHandle(data_get($product, 'handle'), data_get($product, 'title'));
+
+        if ($handle !== '') {
+            $collectionIndex['handles'][$handle] = true;
+        }
+
+        $variant = data_get($product, 'variants.nodes.0', []);
+        $sku = $this->normalizeText(data_get($variant, 'sku'));
+
+        if ($sku !== '') {
+            $collectionIndex['skus'][Str::lower($sku)] = true;
+        }
+
+        $title = $this->normalizeText(data_get($product, 'title'));
     }
 
     protected function normalizePrice($price): string

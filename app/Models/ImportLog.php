@@ -15,4 +15,9 @@ class ImportLog extends Model
     protected $casts = [
         'context' => 'array',
     ];
+
+    public function upload()
+    {
+        return $this->belongsTo(Upload::class);
+    }
 }
